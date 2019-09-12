@@ -78,7 +78,9 @@ KERNELFLINGER_CFLAGS += -DBOARD_BOOTIMAGE_PARTITION_SIZE=$(BOARD_BOOTIMAGE_PARTI
 # adb in crashmode allows to pull the entire RAM and MUST never be
 # disabled allowed on a USER build for security reasons:
 ifneq ($(TARGET_BUILD_VARIANT),user)
-    KERNELFLINGER_CFLAGS += -DCRASHMODE_USE_ADB
+    ifneq ($(strip $(KERNELFLINGER_DISABLE_CRASHMODE_USE_ADB)),true)
+        KERNELFLINGER_CFLAGS += -DCRASHMODE_USE_ADB
+    endif
 endif
 
 ifneq ($(strip $(KERNELFLINGER_USE_UI)),false)

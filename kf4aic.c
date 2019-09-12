@@ -156,6 +156,22 @@ CHAR16 *absolute_path(EFI_HANDLE image_handle, CHAR16 *file)
 	return abs_path;
 }
 
+static VOID show_disable_secure_boot_warnning(UINT8 boot_state)
+{
+	BOOLEAN power_off = FALSE;
+	enum boot_target bt = NORMAL_BOOT;
+	if (boot_state > min_boot_state())
+		power_off = TRUE;
+
+#ifdef USE_UI
+	bt = ux_prompt_user(SECURE_BOOT_CODE, power_off, boot_state, NULL, 0);
+#else
+	debug(L"NO_UI error_code %d", error_code);
+#endif
+	if (power_off || bt != NORMAL_BOOT)
+		halt_system();
+}
+
 EFI_STATUS start_systemd_boot(EFI_HANDLE image_handle)
 {
 	EFI_STATUS ret;
@@ -229,7 +245,7 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *_table)
 
 	vbmeta_path = absolute_path(image, VBMETA_IAS_FILE);
 	// if secureboot is disabled, return always successful and verify_pass always true
-	ret = verify_vbmeta_ias(ESP_PARTITION, absolute_path(image, VBMETA_IAS_FILE), &verify_pass);
+	ret = verify_vbmeta_ias(ESP_PARTITION, vbmeta_path, &verify_pass);
 	if (vbmeta_path != NULL)
 		FreePool(vbmeta_path);
 	if (EFI_ERROR(ret) || !verify_pass)
@@ -243,8 +259,8 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *_table)
 	if (!is_platform_secure_boot_enabled())
 		boot_state = BOOT_STATE_GREEN;
 	else {
-		/* TBD: show warning information clearly on screen for user consent */
 		boot_state = BOOT_STATE_YELLOW;
+		show_disable_secure_boot_warnning(boot_state)
 	}
 	init_rot_data(boot_state, &g_rot_data);
 
